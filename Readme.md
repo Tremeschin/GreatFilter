@@ -33,25 +33,29 @@
     // ==UserScript==
     // @name         GreatFilter
     // @description  Remove Low view count videos from the YouTube homepage
-    // @version      1.0
+    // @version      1.0.1
     // @author       Tremeschin
     // @match        *://*.youtube.com/*
     // @namespace    http://tampermonkey.net/
     // @icon         https://www.google.com/s2/favicons?sz=64&domain=youtube.com
     // ==/UserScript==
-
+    
     (function() {
         'use strict';
-
+    
         // Act on videos that have less than this amount of views
         const VIEW_THRESHOLD = 5000;
-
+    
         function isBadVideo(views) {
-
+    
             // Match for 'N.Nuu views' (1.3K, 2.0M, 1Mrd) until the next space ('views' word)
-            let [, number, unit] = views.innerText.trim().match(/^(\d+(?:\.\d+)?)\s*([^\s]+)?/)
+            let match = views.innerText.trim().match(/^(\d+(?:\.\d+)?)\s*([^\s]+)?/);
+            if (!match) return false;
+    
+            // Unpack and find true values
+            let [, number, unit] = match;
             number = parseFloat(number);
-
+    
             // Find the true total number of views
             switch (unit.toLowerCase()) {
                 case 'k':
@@ -68,12 +72,12 @@
                     number *= 1000000000;
                     break;
             }
-
+    
             return (number < VIEW_THRESHOLD);
         }
-
+    
         function filterVideos() {
-
+    
             // Skip if intentionally seeing subscriptions or a channel page
             if (location.pathname.startsWith("/feed/subscriptions")) {
                 return;
@@ -81,7 +85,7 @@
             if (location.pathname.startsWith("/@")) {
                 return;
             }
-
+    
             // Act on the homepage or shorts
             if (location.pathname.startsWith("/shorts")) {
                 document.querySelectorAll('.reel-video-in-sequence.style-scope.ytd-shorts').forEach(video => {
@@ -98,23 +102,23 @@
                     const views = videoRenderer.querySelector('.inline-metadata-item.style-scope.ytd-video-meta-block');
                     if (views && isBadVideo(views)) {
                         // Note: Select some options below:
-
+    
                         // // Send the video to the shadow realm
                         // videoRenderer.remove();
-
+    
                         // // More gracefully to the shadow realm
                         // videoRenderer.style.display = 'none';
-
+    
                         // // Fair compromise, still visible but dimmed
                         videoRenderer.style.opacity = '0.13';
-
+    
                         // // Remove clickable links
                         // videoRenderer.querySelectorAll('a').forEach(a => a.removeAttribute('href'));
                     }
                 });
             }
         }
-
+    
         // Run the filter function whenever the page changes
         const observer = new MutationObserver(filterVideos);
         observer.observe(document.body, {childList: true, subtree: true});
